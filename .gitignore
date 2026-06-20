@@ -12,11 +12,17 @@
 .swiftpm/
 migrate_working_dir/
 
-# Secrets (Wiggy Wash doesn't use .env today — Firebase config lives in
-# lib/firebase_options.dart, which is safe to commit for web apps).
+# Secrets / Firebase config.
+# Note: the Firebase *web* API key in lib/firebase_options.dart is NOT a secret —
+# it is shipped publicly in the compiled web bundle by design and is protected by
+# Firestore Security Rules + Authorized Domains, not by being hidden.
+# The mobile config files below are unused for this web-only deploy, so we keep
+# them out of git.
 .env
 .env.*
 !.env.example
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # IntelliJ related
 *.iml

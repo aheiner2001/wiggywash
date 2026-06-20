@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Wiggy Wash – internal team tool using Firebase Anonymous Auth.
+// Any signed-in (anonymous) client may read/write the app's collections.
+// Tighten further if you ever add real per-user accounts.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Submitted scorecards.
+    match /submissions/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Manager-managed employee roster.
+    match /workers/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    // App config: prices (config/prices) and settings such as the
+    // "see all" toggle (config/settings). Covers every doc in /config.
+    match /config/{doc} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

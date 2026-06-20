@@ -152,38 +152,44 @@ class _SeeAllToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final on = Store.instance.seeAll;
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-      child: Row(
-        children: [
-          const Icon(Icons.visibility_rounded, color: AppColors.navy),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Let everyone see all totals', style: TextStyles.subheading),
-                SizedBox(height: 2),
-                Text(
-                  'When on, employees can view the whole team\'s submissions. '
-                  'When off, each person only sees their own.',
-                  style: TextStyles.caption,
+    return AnimatedBuilder(
+      animation: Store.instance,
+      builder: (context, _) {
+        final on = Store.instance.seeAll;
+        return AppCard(
+          padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+          child: Row(
+            children: [
+              const Icon(Icons.visibility_rounded, color: AppColors.navy),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Let everyone see all totals',
+                        style: TextStyles.subheading),
+                    SizedBox(height: 2),
+                    Text(
+                      'When on, employees can view the whole team\'s submissions. '
+                      'When off, each person only sees their own.',
+                      style: TextStyles.caption,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Switch(
+                value: on,
+                onChanged: (value) async {
+                  final err = await Store.instance.setSeeAll(value);
+                  if (context.mounted && err != null) {
+                    showStoreMessage(context, err, error: true);
+                  }
+                },
+              ),
+            ],
           ),
-          Switch(
-            value: on,
-            onChanged: (value) async {
-              final err = await Store.instance.setSeeAll(value);
-              if (context.mounted && err != null) {
-                showStoreMessage(context, err, error: true);
-              }
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
