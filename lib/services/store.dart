@@ -28,10 +28,12 @@ class Store extends ChangeNotifier {
   static const _kWorkers = 'ww_workers';
   static const _kPrices = 'ww_prices';
   static const _kDraftPrefix = 'ww_draft_';
+  static const _kSettings = 'ww_settings';
   static const _kCollection = 'submissions';
   static const _kWorkersCollection = 'workers';
   static const _kConfigCollection = 'config';
   static const _kPricesDoc = 'prices';
+  static const _kSettingsDoc = 'settings';
 
   SharedPreferences? _prefs;
   Profile? _profile;
@@ -39,12 +41,17 @@ class Store extends ChangeNotifier {
   List<Worker> _workers = [];
 
   bool _cloud = false;
+  bool _seeAll = false;
   CollectionReference<Map<String, dynamic>>? _col;
   CollectionReference<Map<String, dynamic>>? _workersCol;
   DocumentReference<Map<String, dynamic>>? _pricesDocRef;
+  DocumentReference<Map<String, dynamic>>? _settingsDocRef;
 
   /// Whether submissions are syncing through Firestore (vs local-only).
   bool get isCloud => _cloud;
+
+  /// Manager setting: when true, employees can see everyone's submissions.
+  bool get seeAll => _seeAll;
 
   Profile? get profile => _profile;
   List<Submission> get submissions => List.unmodifiable(_submissions);
@@ -59,6 +66,7 @@ class Store extends ChangeNotifier {
     _loadProfile();
 
     _loadPrices();
+    _loadSettings();
 
     _cloud = Firebase.apps.isNotEmpty;
     if (_cloud) {
@@ -67,6 +75,9 @@ class Store extends ChangeNotifier {
       _pricesDocRef = FirebaseFirestore.instance
           .collection(_kConfigCollection)
           .doc(_kPricesDoc);
+      _settingsDocRef = FirebaseFirestore.instance
+          .collection(_kConfigCollection)
+          .doc(_kSettingsDoc);
       // Live feed: every add/delete/reset on any device flows back here.
       _col!
           .orderBy('submittedAt', descending: true)
@@ -81,9 +92,40 @@ class Store extends ChangeNotifier {
       _pricesDocRef!.snapshots().listen(_onPricesSnapshot, onError: (Object e) {
         debugPrint('Firestore prices listen error: $e');
       });
+      _settingsDocRef!.snapshots().listen(_onSettingsSnapshot,
+          onError: (Object e) {
+        debugPrint('Firestore settings listen error: $e');
+      });
     } else {
       _loadSubmissions();
       _loadWorkers();
+    }
+  }
+
+  // ---- Settings (manager-controlled) ------------------------------------
+
+  void _loadSettings() {
+    _seeAll = _prefs?.getBool(_kSettings) ?? false;
+  }
+
+  void _onSettingsSnapshot(DocumentSnapshot<Map<String, dynamic>> doc) {
+    _seeAll = doc.data()?['seeAll'] as bool? ?? false;
+    notifyListeners();
+  }
+
+  Future<String?> setSeeAll(bool value) async {
+    try {
+      if (_cloud) {
+        await _settingsDocRef!.set({'seeAll': value}, SetOptions(merge: true));
+      } else {
+        _seeAll = value;
+        await _prefs?.setBool(_kSettings, value);
+        notifyListeners();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('setSeeAll error: $e');
+      return 'Could not save setting. Check your connection and Firestore rules.';
     }
   }
 

@@ -6,6 +6,7 @@ import '../models/submission.dart';
 import '../services/store.dart';
 import '../theme.dart';
 import '../widgets/profile_menu.dart';
+import '../widgets/store_message.dart';
 import 'pricing_screen.dart';
 import 'workers_screen.dart';
 
@@ -111,6 +112,8 @@ class _ManagerScreenState extends State<ManagerScreen> {
                     onTap: _pickDay,
                   ),
                   const SizedBox(height: 12),
+                  const _SeeAllToggle(),
+                  const SizedBox(height: 12),
                   _TeamTotals(submissions: all),
                   const SizedBox(height: 12),
                   if (all.isEmpty)
@@ -140,6 +143,48 @@ class _ManagerScreenState extends State<ManagerScreen> {
       map.putIfAbsent(s.employeeName, () => []).add(s);
     }
     return map;
+  }
+}
+
+/// Manager switch controlling whether employees can see everyone's submissions.
+class _SeeAllToggle extends StatelessWidget {
+  const _SeeAllToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final on = Store.instance.seeAll;
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+      child: Row(
+        children: [
+          const Icon(Icons.visibility_rounded, color: AppColors.navy),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Let everyone see all totals', style: TextStyles.subheading),
+                SizedBox(height: 2),
+                Text(
+                  'When on, employees can view the whole team\'s submissions. '
+                  'When off, each person only sees their own.',
+                  style: TextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: on,
+            onChanged: (value) async {
+              final err = await Store.instance.setSeeAll(value);
+              if (context.mounted && err != null) {
+                showStoreMessage(context, err, error: true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
 

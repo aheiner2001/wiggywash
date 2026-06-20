@@ -9,6 +9,7 @@ import '../services/store.dart';
 import '../theme.dart';
 import '../widgets/profile_menu.dart';
 import '../widgets/tally_row.dart';
+import 'reports_screen.dart';
 import 'summary_screen.dart';
 
 final _money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
@@ -149,23 +150,34 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 120),
-              children: [
-                _HeaderCard(
-                  name: widget.profile.name,
-                  baController: _baGoal,
-                  live: live,
-                  onBaChanged: () {
-                    setState(() {});
-                    _persistDraft();
-                  },
-                ),
-                const SizedBox(height: 8),
-                ..._buildSections(),
-                const SizedBox(height: 12),
-                _SummaryCard(live: live),
-              ],
+            child: AnimatedBuilder(
+              animation: Store.instance,
+              builder: (context, _) {
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 120),
+                  children: [
+                    _MyTotalsCard(employeeName: widget.profile.name),
+                    if (Store.instance.seeAll) ...[
+                      const SizedBox(height: 8),
+                      _TeamButton(),
+                    ],
+                    const SizedBox(height: 8),
+                    _HeaderCard(
+                      name: widget.profile.name,
+                      baController: _baGoal,
+                      live: live,
+                      onBaChanged: () {
+                        setState(() {});
+                        _persistDraft();
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    ..._buildSections(),
+                    const SizedBox(height: 12),
+                    _SummaryCard(live: live),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -374,6 +386,84 @@ class _StatRow extends StatelessWidget {
               )),
         ],
       ),
+    );
+  }
+}
+
+/// Top-of-page card showing the employee's own submitted totals for today.
+/// Tapping it opens their personal report list.
+class _MyTotalsCard extends StatelessWidget {
+  const _MyTotalsCard({required this.employeeName});
+  final String employeeName;
+
+  bool _isToday(DateTime d) {
+    final now = DateTime.now();
+    return d.year == now.year && d.month == now.month && d.day == now.day;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mine = Store.instance.submissions.where((s) =>
+        _isToday(s.submittedAt) &&
+        s.employeeName.toLowerCase() == employeeName.toLowerCase());
+    final revenue = mine.fold(0.0, (s, e) => s + e.grandTotalRevenue);
+    final members = mine.fold(0, (s, e) => s + e.totalMemberships);
+    final singles = mine.fold(0, (s, e) => s + e.totalSingleWashes);
+    final shifts = mine.length;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              ReportsScreen(title: 'My reports', filterName: employeeName),
+        ),
+      ),
+      child: AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Your total today', style: TextStyles.caption),
+                  const SizedBox(height: 4),
+                  Text(_money.format(revenue),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.success,
+                      )),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$members members • $singles singles • $shifts shift(s)',
+                    style: TextStyles.caption,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Visible only when the manager enables "see all" — lets employees view the
+/// whole team's submissions for today.
+class _TeamButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => const ReportsScreen(title: 'Team today'),
+        ),
+      ),
+      icon: const Icon(Icons.groups_rounded),
+      label: const Text('View team totals'),
     );
   }
 }
