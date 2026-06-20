@@ -38,8 +38,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # --pwa-strategy=none disables the service worker so every visit loads the
+      # latest deploy (no stale-cache surprises). The app still works online
+      # (Firestore) and keeps drafts via localStorage.
       - name: Build web
-        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+        run: flutter build web --release --pwa-strategy=none --base-href "/${{ github.event.repository.name }}/"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

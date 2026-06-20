@@ -56,6 +56,23 @@
     <img src="icons/Icon-192.png" alt="Wiggy Wash" onerror="this.style.display='none'"/>
     <div class="spinner"></div>
   </div>
+  <script>
+    // Recover devices that cached an older service-worker build: unregister any
+    // existing service workers and clear their caches once, so this and future
+    // deploys always load fresh. Safe to keep — no-op when nothing is registered.
+    (function () {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (reg) { reg.unregister(); });
+        }).catch(function () {});
+      }
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (keys) {
+          keys.forEach(function (k) { caches.delete(k); });
+        }).catch(function () {});
+      }
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
   <script>
     window.addEventListener('flutter-first-frame', function () {
