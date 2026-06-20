@@ -17,7 +17,6 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final _managerName = TextEditingController();
   final _managerPassword = TextEditingController();
   final _employeePin = TextEditingController();
 
@@ -28,7 +27,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   void dispose() {
-    _managerName.dispose();
     _managerPassword.dispose();
     _employeePin.dispose();
     super.dispose();
@@ -53,10 +51,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() => _authError = 'Incorrect manager password');
         return;
       }
-      final name = _managerName.text.trim();
-      if (name.isEmpty) return;
       await Store.instance.saveProfile(
-        Profile(name: name, role: UserRole.manager),
+        const Profile(name: kManagerDisplayName, role: UserRole.manager),
       );
       return;
     }
@@ -77,8 +73,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final managerNameError =
-        _attempted && _managerLogin && _managerName.text.trim().isEmpty;
     final employeeError =
         _attempted && !_managerLogin && _selectedWorker == null;
     final pinError = _attempted &&
@@ -131,21 +125,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             controller: _managerPassword,
                             obscureText: true,
                             decoration: InputDecoration(
-                              labelText: 'Manager password',
+                              labelText: 'Password',
+                              hintText: 'Enter password',
                               errorText: _authError,
                             ),
                             onChanged: (_) => setState(() => _authError = null),
-                          ),
-                          const SizedBox(height: 14),
-                          TextField(
-                            controller: _managerName,
-                            textCapitalization: TextCapitalization.words,
-                            decoration: InputDecoration(
-                              labelText: 'Your name',
-                              hintText: 'e.g. Aaron',
-                              errorText:
-                                  managerNameError ? 'Please enter your name' : null,
-                            ),
                           ),
                         ] else ...[
                           _EmployeePicker(
@@ -347,7 +331,8 @@ class _EmployeePicker extends StatelessWidget {
                 obscureText: true,
                 onChanged: (_) => onPinChanged(),
                 decoration: InputDecoration(
-                  labelText: 'Your entry code',
+                  labelText: 'Entry code',
+                  hintText: 'Enter code',
                   errorText: pinError ? 'Enter your code' : null,
                 ),
               ),

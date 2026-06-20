@@ -102,9 +102,9 @@ class _WorkersScreenState extends State<WorkersScreen> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: pinController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Entry code',
-                    hintText: 'e.g. 1234',
+                    hintText: 'Enter code',
                   ),
                   textCapitalization: TextCapitalization.none,
                 ),
@@ -172,7 +172,7 @@ class _WorkersScreenState extends State<WorkersScreen> {
                           controller: _name,
                           textCapitalization: TextCapitalization.words,
                           decoration: InputDecoration(
-                            hintText: 'e.g. Jacob',
+                            hintText: 'Enter name',
                             errorText: _error,
                           ),
                           onChanged: (_) {
@@ -195,7 +195,7 @@ class _WorkersScreenState extends State<WorkersScreen> {
                               controller: _pin,
                               decoration: const InputDecoration(
                                 labelText: 'Entry code',
-                                hintText: 'e.g. 1234',
+                                hintText: 'Enter code',
                               ),
                             ),
                           ),

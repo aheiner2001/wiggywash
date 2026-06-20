@@ -29,7 +29,10 @@ class ProfileAction extends StatelessWidget {
           controller: controller,
           obscureText: true,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Password'),
+          decoration: const InputDecoration(
+            labelText: 'Password',
+            hintText: 'Enter password',
+          ),
           onSubmitted: (_) => Navigator.pop(ctx, true),
         ),
         actions: [
@@ -52,8 +55,6 @@ class ProfileAction extends StatelessWidget {
 
   void _showSheet(BuildContext context) {
     final profile = Store.instance.profile;
-    final managerNameController =
-        TextEditingController(text: profile?.name ?? '');
     final employeePinController = TextEditingController();
 
     UserRole role = profile?.role ?? UserRole.employee;
@@ -99,11 +100,9 @@ class ProfileAction extends StatelessWidget {
                         const Text('Account', style: TextStyles.heading),
                         const SizedBox(height: 16),
                         if (role == UserRole.manager) ...[
-                          TextField(
-                            controller: managerNameController,
-                            textCapitalization: TextCapitalization.words,
-                            decoration:
-                                const InputDecoration(labelText: 'Your name'),
+                          const Text(
+                            'Signed in as manager',
+                            style: TextStyles.body,
                           ),
                           const SizedBox(height: 12),
                           TextButton(
@@ -194,6 +193,7 @@ class ProfileAction extends StatelessWidget {
                               obscureText: true,
                               decoration: InputDecoration(
                                 labelText: 'Entry code',
+                                hintText: 'Enter code',
                                 errorText: authError,
                               ),
                               onChanged: (_) =>
@@ -234,10 +234,11 @@ class ProfileAction extends StatelessWidget {
                         ElevatedButton(
                           onPressed: () async {
                             if (role == UserRole.manager) {
-                              final name = managerNameController.text.trim();
-                              if (name.isEmpty) return;
                               await Store.instance.saveProfile(
-                                Profile(name: name, role: role),
+                                const Profile(
+                                  name: kManagerDisplayName,
+                                  role: UserRole.manager,
+                                ),
                               );
                             } else {
                               if (selectedWorker == null) return;
