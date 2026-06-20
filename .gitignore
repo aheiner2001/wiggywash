@@ -12,6 +12,12 @@
 .swiftpm/
 migrate_working_dir/
 
+# Secrets (Wiggy Wash doesn't use .env today — Firebase config lives in
+# lib/firebase_options.dart, which is safe to commit for web apps).
+.env
+.env.*
+!.env.example
+
 # IntelliJ related
 *.iml
 *.ipr

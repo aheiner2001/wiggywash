@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/auth_config.dart';
 import '../models/profile.dart';
 import '../models/worker.dart';
 import '../services/store.dart';
@@ -18,12 +19,47 @@ class ProfileAction extends StatelessWidget {
     );
   }
 
+  Future<bool> _promptManagerPassword(BuildContext context) async {
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Manager password'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Password'),
+          onSubmitted: (_) => Navigator.pop(ctx, true),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    final password = controller.text;
+    controller.dispose();
+    if (confirmed != true) return false;
+    return verifyManagerPassword(password);
+  }
+
   void _showSheet(BuildContext context) {
     final profile = Store.instance.profile;
     final managerNameController =
         TextEditingController(text: profile?.name ?? '');
+    final employeePinController = TextEditingController();
+
     UserRole role = profile?.role ?? UserRole.employee;
     Worker? selectedWorker;
+    String? authError;
+
     if (profile?.role == UserRole.employee) {
       final current = profile!.name;
       for (final w in Store.instance.workers) {
@@ -62,24 +98,6 @@ class ProfileAction extends StatelessWidget {
                       children: [
                         const Text('Account', style: TextStyles.heading),
                         const SizedBox(height: 16),
-                        SegmentedButton<UserRole>(
-                          segments: const [
-                            ButtonSegment(
-                              value: UserRole.employee,
-                              label: Text('Employee'),
-                              icon: Icon(Icons.badge_outlined),
-                            ),
-                            ButtonSegment(
-                              value: UserRole.manager,
-                              label: Text('Manager'),
-                              icon: Icon(Icons.insights_outlined),
-                            ),
-                          ],
-                          selected: {role},
-                          onSelectionChanged: (s) =>
-                              setSheet(() => role = s.first),
-                        ),
-                        const SizedBox(height: 16),
                         if (role == UserRole.manager) ...[
                           TextField(
                             controller: managerNameController,
@@ -87,9 +105,17 @@ class ProfileAction extends StatelessWidget {
                             decoration:
                                 const InputDecoration(labelText: 'Your name'),
                           ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: () => setSheet(() {
+                              role = UserRole.employee;
+                              authError = null;
+                              employeePinController.clear();
+                            }),
+                            child: const Text('Switch to employee'),
+                          ),
                         ] else ...[
-                          const Text('Your name',
-                              style: TextStyles.subheading),
+                          const Text('Your name', style: TextStyles.subheading),
                           const SizedBox(height: 8),
                           if (workers.isEmpty)
                             const Text(
@@ -109,8 +135,11 @@ class ProfileAction extends StatelessWidget {
                                   child: InkWell(
                                     borderRadius:
                                         BorderRadius.circular(AppRadius.button),
-                                    onTap: () =>
-                                        setSheet(() => selectedWorker = w),
+                                    onTap: () => setSheet(() {
+                                      selectedWorker = w;
+                                      employeePinController.clear();
+                                      authError = null;
+                                    }),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 14,
@@ -119,14 +148,33 @@ class ProfileAction extends StatelessWidget {
                                       child: Row(
                                         children: [
                                           Expanded(
-                                            child: Text(
-                                              w.name,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w800,
-                                                color: selectedWorker?.id == w.id
-                                                    ? Colors.white
-                                                    : AppColors.navy,
-                                              ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  w.name,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                    color: selectedWorker?.id ==
+                                                            w.id
+                                                        ? Colors.white
+                                                        : AppColors.navy,
+                                                  ),
+                                                ),
+                                                if (w.requiresPin)
+                                                  Text(
+                                                    'Code required',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: selectedWorker
+                                                                  ?.id ==
+                                                              w.id
+                                                          ? Colors.white70
+                                                          : AppColors.textMuted,
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                           ),
                                           if (selectedWorker?.id == w.id)
@@ -139,7 +187,49 @@ class ProfileAction extends StatelessWidget {
                                 ),
                               ),
                             ),
+                          if (selectedWorker?.requiresPin == true) ...[
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: employeePinController,
+                              obscureText: true,
+                              decoration: InputDecoration(
+                                labelText: 'Entry code',
+                                errorText: authError,
+                              ),
+                              onChanged: (_) =>
+                                  setSheet(() => authError = null),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () async {
+                              final ok = await _promptManagerPassword(ctx);
+                              if (!ctx.mounted) return;
+                              if (!ok) {
+                                setSheet(() =>
+                                    authError = 'Incorrect manager password');
+                                return;
+                              }
+                              setSheet(() {
+                                role = UserRole.manager;
+                                authError = null;
+                              });
+                            },
+                            child: const Text('Manager sign in'),
+                          ),
                         ],
+                        if (authError != null &&
+                            authError != 'Incorrect entry code')
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              authError!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: () async {
@@ -151,6 +241,14 @@ class ProfileAction extends StatelessWidget {
                               );
                             } else {
                               if (selectedWorker == null) return;
+                              if (selectedWorker!.requiresPin) {
+                                if (!selectedWorker!
+                                    .verifyPin(employeePinController.text)) {
+                                  setSheet(() =>
+                                      authError = 'Incorrect entry code');
+                                  return;
+                                }
+                              }
                               await Store.instance.saveProfile(
                                 Profile(
                                   name: selectedWorker!.name,

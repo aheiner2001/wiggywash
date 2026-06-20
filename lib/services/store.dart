@@ -74,15 +74,24 @@ class Store extends ChangeNotifier {
   }
 
   void _onWorkersSnapshot(QuerySnapshot<Map<String, dynamic>> snap) {
-    _workers = snap.docs
-        .map((d) => Worker(
-              id: d.id,
-              name: d.data()['name'] as String? ?? '',
-            ))
-        .where((w) => w.name.isNotEmpty)
-        .toList();
+    _workers = snap.docs.map(_workerFromDoc).where((w) => w.name.isNotEmpty).toList();
     notifyListeners();
   }
+
+  Worker _workerFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    final rawPin = data['pin'] as String?;
+    return Worker(
+      id: doc.id,
+      name: data['name'] as String? ?? '',
+      pin: rawPin != null && rawPin.trim().isNotEmpty ? rawPin.trim() : null,
+    );
+  }
+
+  Map<String, dynamic> _workerToDoc(Worker worker) => {
+        'name': worker.name,
+        if (worker.pin != null && worker.pin!.isNotEmpty) 'pin': worker.pin,
+      };
 
   void _onSnapshot(QuerySnapshot<Map<String, dynamic>> snap) {
     _submissions = snap.docs.map(_fromDoc).toList();
@@ -160,30 +169,80 @@ class Store extends ChangeNotifier {
   bool hasWorkerName(String name) =>
       _workers.any((w) => w.name.toLowerCase() == name.trim().toLowerCase());
 
-  Future<String?> addWorker(String name) async {
+  Future<String?> addWorker(String name, {String? pin}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'Name cannot be empty';
     if (hasWorkerName(trimmed)) return '$trimmed is already on the team';
 
-    final worker = Worker(id: const Uuid().v4(), name: trimmed);
-    if (_cloud) {
-      await _workersCol!.doc(worker.id).set({'name': worker.name});
+    final cleanedPin = pin?.trim();
+    final worker = Worker(
+      id: const Uuid().v4(),
+      name: trimmed,
+      pin: cleanedPin != null && cleanedPin.isNotEmpty ? cleanedPin : null,
+    );
+
+    try {
+      if (_cloud) {
+        await _workersCol!.doc(worker.id).set(_workerToDoc(worker));
+        return null;
+      }
+      _workers.add(worker);
+      await _persistWorkers();
+      notifyListeners();
       return null;
+    } catch (e) {
+      debugPrint('addWorker error: $e');
+      return 'Could not add worker. Check your connection and Firestore rules.';
     }
-    _workers.add(worker);
-    await _persistWorkers();
-    notifyListeners();
-    return null;
   }
 
-  Future<void> removeWorker(String id) async {
-    if (_cloud) {
-      await _workersCol!.doc(id).delete();
-      return;
+  Future<String?> updateWorker(
+    String id, {
+    String? pin,
+    bool clearPin = false,
+  }) async {
+    final cleanedPin =
+        clearPin ? null : (pin?.trim().isNotEmpty == true ? pin!.trim() : null);
+
+    try {
+      if (_cloud) {
+        if (cleanedPin == null) {
+          await _workersCol!.doc(id).update({'pin': FieldValue.delete()});
+        } else {
+          await _workersCol!.doc(id).update({'pin': cleanedPin});
+        }
+        return null;
+      }
+
+      final index = _workers.indexWhere((w) => w.id == id);
+      if (index < 0) return 'Worker not found';
+      final current = _workers[index];
+      _workers[index] = current.copyWith(pin: cleanedPin, clearPin: clearPin);
+      await _persistWorkers();
+      notifyListeners();
+      return null;
+    } catch (e) {
+      debugPrint('updateWorker error: $e');
+      return 'Could not update entry code. Check Firestore rules.';
     }
-    _workers.removeWhere((w) => w.id == id);
-    await _persistWorkers();
-    notifyListeners();
+  }
+
+  Future<String?> removeWorker(String id) async {
+    try {
+      if (_cloud) {
+        await _workersCol!.doc(id).delete();
+        return null;
+      }
+      final removed = _workers.where((w) => w.id == id).length;
+      if (removed == 0) return 'Worker not found';
+      _workers.removeWhere((w) => w.id == id);
+      await _persistWorkers();
+      notifyListeners();
+      return null;
+    } catch (e) {
+      debugPrint('removeWorker error: $e');
+      return 'Could not remove worker. Check Firestore rules allow delete on workers.';
+    }
   }
 
   // ---- Submissions ------------------------------------------------------
