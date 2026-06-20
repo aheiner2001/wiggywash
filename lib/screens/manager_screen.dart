@@ -6,6 +6,7 @@ import '../models/submission.dart';
 import '../services/store.dart';
 import '../theme.dart';
 import '../widgets/profile_menu.dart';
+import 'pricing_screen.dart';
 import 'workers_screen.dart';
 
 final _money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
@@ -71,6 +72,13 @@ class _ManagerScreenState extends State<ManagerScreen> {
               MaterialPageRoute(builder: (_) => const WorkersScreen()),
             ),
             icon: const Icon(Icons.group_outlined),
+          ),
+          IconButton(
+            tooltip: 'Edit prices',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PricingScreen()),
+            ),
+            icon: const Icon(Icons.sell_outlined),
           ),
           IconButton(
             tooltip: 'Pick date',
@@ -181,6 +189,10 @@ class _TeamTotals extends StatelessWidget {
     final shop = submissions.fold(0, (s, e) => s + e.totalShopSales);
     final totalWashes = memberships + singles;
     final conv = totalWashes == 0 ? 0.0 : memberships / totalWashes * 100;
+    final goals = submissions.where((s) => s.baGoal > 0).toList();
+    final avgGoal = goals.isEmpty
+        ? 0.0
+        : goals.fold(0.0, (s, e) => s + e.baGoal) / goals.length;
 
     return AppCard(
       padding: const EdgeInsets.all(18),
@@ -205,7 +217,11 @@ class _TeamTotals extends StatelessWidget {
               _Tile(label: 'Memberships', value: '$memberships'),
               _Tile(label: 'Singles', value: '$singles'),
               _Tile(label: 'Shop', value: '$shop'),
-              _Tile(label: 'Team BA', value: '${conv.toStringAsFixed(0)}%'),
+              _Tile(
+                label: 'BA / Goal',
+                value:
+                    '${conv.toStringAsFixed(0)}% / ${avgGoal.toStringAsFixed(0)}%',
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -294,8 +310,11 @@ class _EmployeeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(name, style: TextStyles.subheading),
-                    Text('${submissions.length} shift(s)',
-                        style: TextStyles.caption),
+                    Text(
+                      '${submissions.length} shift(s)'
+                      '${latestGoal > 0 ? ' • Goal ${latestGoal.toStringAsFixed(0)}%' : ''}',
+                      style: TextStyles.caption,
+                    ),
                   ],
                 ),
               ),

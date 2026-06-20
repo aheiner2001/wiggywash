@@ -34,14 +34,16 @@ class Submission {
 
   double sectionRevenue(WashSection section) =>
       itemsFor(section).fold(0.0, (sum, item) {
-        if (!item.hasPrice) return sum;
-        return sum + countOf(item.id) * item.price!;
+        final price = priceOf(item);
+        if (price == null) return sum;
+        return sum + countOf(item.id) * price;
       });
 
   double get grandTotalRevenue =>
       kLineItems.fold(0.0, (sum, item) {
-        if (!item.hasPrice) return sum;
-        return sum + countOf(item.id) * item.price!;
+        final price = priceOf(item);
+        if (price == null) return sum;
+        return sum + countOf(item.id) * price;
       });
 
   /// BA Actual / conversion rate: share of washes that became memberships.

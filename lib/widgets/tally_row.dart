@@ -22,7 +22,8 @@ class TallyRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineTotal = item.hasPrice ? count * item.price! : null;
+    final price = priceOf(item);
+    final lineTotal = price != null ? count * price : null;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 5),
@@ -47,9 +48,9 @@ class TallyRow extends StatelessWidget {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                if (item.hasPrice)
+                if (price != null)
                   Text(
-                    _money.format(item.price),
+                    _money.format(price),
                     style: const TextStyle(
                       fontSize: 12.5,
                       color: AppColors.textMuted,

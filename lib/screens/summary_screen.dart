@@ -170,8 +170,8 @@ class _SectionBlock extends StatelessWidget {
                 Text('${item.label}  ×${submission.countOf(item.id)}',
                     style: TextStyles.body),
                 Text(
-                  item.hasPrice
-                      ? _money.format(submission.countOf(item.id) * item.price!)
+                  priceOf(item) != null
+                      ? _money.format(submission.countOf(item.id) * priceOf(item)!)
                       : '—',
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/profile.dart';
+import '../models/scorecard_config.dart';
 import '../models/submission.dart';
 import '../models/worker.dart';
 
@@ -25,8 +26,11 @@ class Store extends ChangeNotifier {
   static const _kProfile = 'ww_profile';
   static const _kSubmissions = 'ww_submissions';
   static const _kWorkers = 'ww_workers';
+  static const _kPrices = 'ww_prices';
   static const _kCollection = 'submissions';
   static const _kWorkersCollection = 'workers';
+  static const _kConfigCollection = 'config';
+  static const _kPricesDoc = 'prices';
 
   SharedPreferences? _prefs;
   Profile? _profile;
@@ -36,6 +40,7 @@ class Store extends ChangeNotifier {
   bool _cloud = false;
   CollectionReference<Map<String, dynamic>>? _col;
   CollectionReference<Map<String, dynamic>>? _workersCol;
+  DocumentReference<Map<String, dynamic>>? _pricesDocRef;
 
   /// Whether submissions are syncing through Firestore (vs local-only).
   bool get isCloud => _cloud;
@@ -52,10 +57,15 @@ class Store extends ChangeNotifier {
     _prefs = await SharedPreferences.getInstance();
     _loadProfile();
 
+    _loadPrices();
+
     _cloud = Firebase.apps.isNotEmpty;
     if (_cloud) {
       _col = FirebaseFirestore.instance.collection(_kCollection);
       _workersCol = FirebaseFirestore.instance.collection(_kWorkersCollection);
+      _pricesDocRef = FirebaseFirestore.instance
+          .collection(_kConfigCollection)
+          .doc(_kPricesDoc);
       // Live feed: every add/delete/reset on any device flows back here.
       _col!
           .orderBy('submittedAt', descending: true)
@@ -67,9 +77,63 @@ class Store extends ChangeNotifier {
           onError: (Object e) {
         debugPrint('Firestore workers listen error: $e');
       });
+      _pricesDocRef!.snapshots().listen(_onPricesSnapshot, onError: (Object e) {
+        debugPrint('Firestore prices listen error: $e');
+      });
     } else {
       _loadSubmissions();
       _loadWorkers();
+    }
+  }
+
+  // ---- Prices (manager-editable) ----------------------------------------
+
+  void _loadPrices() {
+    final raw = _prefs?.getString(_kPrices);
+    if (raw == null) return;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      PriceBook.setOverrides(_decodePrices(map));
+    } catch (_) {
+      // ignore corrupt cache; defaults remain.
+    }
+  }
+
+  Map<String, double?> _decodePrices(Map<String, dynamic> map) {
+    final result = <String, double?>{};
+    map.forEach((key, value) {
+      result[key] = value == null ? null : (value as num).toDouble();
+    });
+    return result;
+  }
+
+  void _onPricesSnapshot(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    final prices = (data?['prices'] as Map?)?.cast<String, dynamic>() ?? {};
+    PriceBook.setOverrides(_decodePrices(prices));
+    notifyListeners();
+  }
+
+  /// Sets the live price for [id]. Pass `null` to mark the item count-only.
+  Future<String?> setItemPrice(String id, double? price) async {
+    final overrides = PriceBook.overrides;
+    overrides[id] = price;
+    return _savePrices(overrides);
+  }
+
+  Future<String?> _savePrices(Map<String, double?> overrides) async {
+    try {
+      if (_cloud) {
+        await _pricesDocRef!.set({'prices': overrides});
+      } else {
+        PriceBook.setOverrides(overrides);
+        await _prefs?.setString(_kPrices, jsonEncode(overrides));
+        notifyListeners();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('savePrices error: $e');
+      return 'Could not save prices. Check your connection and Firestore rules.';
     }
   }
 
