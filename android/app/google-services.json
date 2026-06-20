@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1090483978663",
+    "project_id": "wiggy-wash-stats",
+    "storage_bucket": "wiggy-wash-stats.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1090483978663:android:15ee7c2e233ac842ce7682",
+        "android_client_info": {
+          "package_name": "com.wiggywash.wiggywash"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwoiIiKx5xEad6fVFX9o4SqZ3mmP96cF8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

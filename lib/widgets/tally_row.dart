@@ -1,0 +1,155 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../models/scorecard_config.dart';
+import '../theme.dart';
+
+final _money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+
+/// A single scorecard line: label + price, a +/- tally counter, and a blue
+/// total box on the right showing the live dollar (or count) total.
+class TallyRow extends StatelessWidget {
+  const TallyRow({
+    super.key,
+    required this.item,
+    required this.count,
+    required this.onChanged,
+  });
+
+  final LineItem item;
+  final int count;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final lineTotal = item.hasPrice ? count * item.price! : null;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.field),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (item.hasPrice)
+                  Text(
+                    _money.format(item.price),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          _StepButton(
+            icon: Icons.remove_rounded,
+            enabled: count > 0,
+            onTap: () => onChanged(count > 0 ? count - 1 : 0),
+          ),
+          SizedBox(
+            width: 34,
+            child: Text(
+              '$count',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          _StepButton(
+            icon: Icons.add_rounded,
+            enabled: true,
+            onTap: () => onChanged(count + 1),
+          ),
+          const SizedBox(width: 8),
+          _TotalBox(
+            text: lineTotal != null ? _money.format(lineTotal) : '$count',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepButton extends StatelessWidget {
+  const _StepButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: enabled ? AppColors.navy : AppColors.hairline,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: enabled ? onTap : null,
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(
+            icon,
+            size: 22,
+            color: enabled ? Colors.white : AppColors.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TotalBox extends StatelessWidget {
+  const _TotalBox({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 66,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.blue,
+        borderRadius: BorderRadius.circular(AppRadius.field),
+        border: Border.all(color: AppColors.blue.withValues(alpha: 0.0)),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navyDark,
+          ),
+        ),
+      ),
+    );
+  }
+}
