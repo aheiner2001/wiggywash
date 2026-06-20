@@ -27,6 +27,38 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
   final Map<String, int> _counts = {for (final i in kLineItems) i.id: 0};
 
   @override
+  void initState() {
+    super.initState();
+    _restoreDraft();
+  }
+
+  void _restoreDraft() {
+    final draft = Store.instance.loadDraft(widget.profile.name);
+    if (draft == null) return;
+    final counts = (draft['counts'] as Map?) ?? {};
+    for (final entry in counts.entries) {
+      final id = entry.key as String;
+      if (_counts.containsKey(id)) {
+        _counts[id] = (entry.value as num).toInt();
+      }
+    }
+    final goal = draft['baGoal'];
+    if (goal != null) {
+      _baGoal.text = (goal as num) == (goal).roundToDouble()
+          ? goal.toStringAsFixed(0)
+          : goal.toString();
+    }
+  }
+
+  void _persistDraft() {
+    Store.instance.saveDraft(
+      widget.profile.name,
+      counts: Map.of(_counts),
+      baGoal: double.tryParse(_baGoal.text.trim()) ?? 0,
+    );
+  }
+
+  @override
   void dispose() {
     _baGoal.dispose();
     super.dispose();
@@ -42,7 +74,10 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
 
   bool get _hasAnyTally => _counts.values.any((c) => c > 0);
 
-  void _set(String id, int value) => setState(() => _counts[id] = value);
+  void _set(String id, int value) {
+    setState(() => _counts[id] = value);
+    _persistDraft();
+  }
 
   Future<void> _resetCard() async {
     final ok = await showDialog<bool>(
@@ -68,6 +103,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
           _counts[i.id] = 0;
         }
       });
+      await Store.instance.clearDraft(widget.profile.name);
     }
   }
 
@@ -80,6 +116,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       submittedAt: DateTime.now(),
     );
     await Store.instance.addSubmission(submission);
+    await Store.instance.clearDraft(widget.profile.name);
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -115,7 +152,15 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 120),
               children: [
-                _HeaderCard(name: widget.profile.name, baController: _baGoal, live: live, onBaChanged: () => setState(() {})),
+                _HeaderCard(
+                  name: widget.profile.name,
+                  baController: _baGoal,
+                  live: live,
+                  onBaChanged: () {
+                    setState(() {});
+                    _persistDraft();
+                  },
+                ),
                 const SizedBox(height: 8),
                 ..._buildSections(),
                 const SizedBox(height: 12),

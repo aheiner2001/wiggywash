@@ -27,6 +27,7 @@ class Store extends ChangeNotifier {
   static const _kSubmissions = 'ww_submissions';
   static const _kWorkers = 'ww_workers';
   static const _kPrices = 'ww_prices';
+  static const _kDraftPrefix = 'ww_draft_';
   static const _kCollection = 'submissions';
   static const _kWorkersCollection = 'workers';
   static const _kConfigCollection = 'config';
@@ -135,6 +136,40 @@ class Store extends ChangeNotifier {
       debugPrint('savePrices error: $e');
       return 'Could not save prices. Check your connection and Firestore rules.';
     }
+  }
+
+  // ---- In-progress draft (per device, per employee) ---------------------
+  //
+  // An unsubmitted scorecard is local to the device, so it survives a refresh
+  // without touching Firestore. Keyed by employee name so different people
+  // sharing a device keep separate drafts.
+
+  String _draftKey(String employeeName) =>
+      '$_kDraftPrefix${employeeName.toLowerCase().trim()}';
+
+  Map<String, dynamic>? loadDraft(String employeeName) {
+    final raw = _prefs?.getString(_draftKey(employeeName));
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveDraft(
+    String employeeName, {
+    required Map<String, int> counts,
+    required double baGoal,
+  }) async {
+    await _prefs?.setString(
+      _draftKey(employeeName),
+      jsonEncode({'counts': counts, 'baGoal': baGoal}),
+    );
+  }
+
+  Future<void> clearDraft(String employeeName) async {
+    await _prefs?.remove(_draftKey(employeeName));
   }
 
   void _onWorkersSnapshot(QuerySnapshot<Map<String, dynamic>> snap) {
