@@ -9,6 +9,7 @@ import '../services/store.dart';
 import '../theme.dart';
 import '../widgets/profile_menu.dart';
 import '../widgets/tally_row.dart';
+import 'help_screen.dart';
 import 'reports_screen.dart';
 import 'summary_screen.dart';
 
@@ -138,6 +139,15 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       appBar: AppBar(
         title: const Text('My Scorecard'),
         actions: [
+          IconButton(
+            tooltip: 'How to view the breakdown',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const HelpScreen(audience: HelpAudience.employee),
+              ),
+            ),
+            icon: const Icon(Icons.info_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Clear scorecard',
             onPressed: _hasAnyTally ? _resetCard : null,

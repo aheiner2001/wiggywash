@@ -7,6 +7,7 @@ import '../services/store.dart';
 import '../theme.dart';
 import '../widgets/profile_menu.dart';
 import '../widgets/store_message.dart';
+import 'help_screen.dart';
 import 'pricing_screen.dart';
 import 'workers_screen.dart';
 
@@ -67,6 +68,15 @@ class _ManagerScreenState extends State<ManagerScreen> {
       appBar: AppBar(
         title: const Text('Team Dashboard'),
         actions: [
+          IconButton(
+            tooltip: 'How to view the breakdown',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const HelpScreen(audience: HelpAudience.manager),
+              ),
+            ),
+            icon: const Icon(Icons.info_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Team roster',
             onPressed: () => Navigator.of(context).push(
