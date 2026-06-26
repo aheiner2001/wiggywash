@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../models/scorecard_config.dart';
 import '../models/submission.dart';
 import '../services/store.dart';
 import '../theme.dart';
@@ -67,10 +68,7 @@ class ReportsScreen extends StatelessWidget {
                           ),
                         )
                   else
-                    ...subs.map((s) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _ShiftCard(submission: s),
-                        )),
+                    _FullBreakdown(submissions: subs),
                 ],
               ),
             ),
@@ -187,38 +185,82 @@ class _EmployeeReport extends StatelessWidget {
   }
 }
 
-class _ShiftCard extends StatelessWidget {
-  const _ShiftCard({required this.submission});
-  final Submission submission;
+/// The employee's own line-by-line breakdown for the day — mirrors the
+/// per-employee breakdown the manager sees. Aggregates every shift, grouped by
+/// section (memberships, singles, shop), with each shift's revenue listed at
+/// the bottom.
+class _FullBreakdown extends StatelessWidget {
+  const _FullBreakdown({required this.submissions});
+  final List<Submission> submissions;
+
+  int _count(String id) => submissions.fold(0, (s, e) => s + e.countOf(id));
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Shift at ${_time.format(submission.submittedAt)}',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(_money.format(submission.grandTotalRevenue),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.success,
-                  )),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 10),
+          title: const Text('Full breakdown',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              )),
+          children: [
+            for (final section in WashSection.values) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 2),
+                  child: Text(section.title.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.roseText,
+                      )),
+                ),
+              ),
+              for (final item in itemsFor(section))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(item.label, style: TextStyles.body),
+                      Text('${_count(item.id)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          )),
+                    ],
+                  ),
+                ),
             ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${submission.totalMemberships} members • '
-            '${submission.totalSingleWashes} singles • '
-            '${submission.totalShopSales} shop • '
-            'BA ${submission.conversionRate.toStringAsFixed(0)}%',
-            style: TextStyles.caption,
-          ),
-        ],
+            const Divider(height: 24),
+            for (final s in submissions)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Shift at ${_time.format(s.submittedAt)}',
+                        style: TextStyles.caption),
+                    Text(_money.format(s.grandTotalRevenue),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textMuted,
+                        )),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
